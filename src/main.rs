@@ -7,7 +7,9 @@ use nalgebra::{self as na, DMatrix, DVector};
 use std;
 use std::f32::consts::TAU;
 use std::f32;
+use std::usize;
 use std::vec;
+use std::env;
 
 fn rotate_matrix(axis_1: usize, axis_2: usize, angle_in_radians: f32, dimension: usize) -> DMatrix<f32> {
     let mut matrix = DMatrix::identity(dimension, dimension);
@@ -74,7 +76,7 @@ fn get_vertices_from_element(polytope_data: &Vec<Vec<Vec<usize>>>, element_verti
 
 fn load_polytope(scene: &mut Scene) {
     if !std::path::Path::new(scene.polytope_path.as_str()).exists() {
-        return
+		panic!("file doesnt exist!!!!");
     }
 
     let contents = std::fs::read_to_string(scene.polytope_path.as_str()).unwrap();
@@ -137,6 +139,19 @@ fn load_polytope(scene: &mut Scene) {
             state = 1;
             continue;
         }
+		
+		if scene.facet_expansion_rank > usize::MAX / 2 { // relative value
+			scene.facet_expansion_rank = rank as usize + usize::MAX - scene.facet_expansion_rank + 1; // just let me use integer overflow >:(
+		}
+		if scene.facet_expansion_rank > rank as usize - 1 {
+			scene.facet_expansion_rank = rank as usize - 1;
+		}
+		if scene.facet_expansion_rank < 2 {
+			scene.facet_expansion_rank = 2;
+		}
+		if rank == 2 && scene.facet_expansion > 0.0 {
+			scene.facet_expansion = 0.0;
+		}
         
         full_lines_seen += 1;
         
@@ -229,11 +244,11 @@ fn load_polytope(scene: &mut Scene) {
     // polytope_data stores the faces, then the cells, tera, etc. Its length is 2 less than the rank.
     if scene.facet_expansion > 0.0 {
         // okay, we need to append vertices of every facet, scaled inward towards the average, to the polytope.
-        for facet in 0..polytope_data[polytope_data.len() - 1].len() {
+        for facet in 0..polytope_data[scene.facet_expansion_rank - 2].len() {
             let mut facet_vertices: Vec<usize> = vec![];
             let mut facet_edges: Vec<usize> = vec![];
             
-            get_vertices_from_element(&polytope_data, &mut facet_vertices, &mut facet_edges, (rank - 1) as usize, facet);
+            get_vertices_from_element(&polytope_data, &mut facet_vertices, &mut facet_edges, scene.facet_expansion_rank as usize, facet);
             
             // once that is done, loop over all the facet_vertices to determine the center.
             let mut facet_center: DVector<f32> = DVector::zeros(scene.dimension);
@@ -424,6 +439,7 @@ struct Scene {
     resolution: u32,
     frame_count: i32,
     facet_expansion: f32,
+	facet_expansion_rank: usize,
     min_dimension: usize,
     dimension: usize,
     vertices: Vec<DVector<f32>>,
@@ -440,18 +456,33 @@ impl Scene {
         let setup_file_contents = std::fs::read_to_string("./setup.txt").unwrap();
         let lines: Vec<&str> = setup_file_contents.lines().collect();
         
+		let args: Vec<String> = env::args().collect();
+		let polytope_path_pre: String;
+		if args.len() < 2 {
+			polytope_path_pre = lines[0].to_string();
+		}
+		else {
+			polytope_path_pre = args[1].clone();
+		}
+		
         Scene {
-            polytope_path: lines[0].to_string(),
+			polytope_path: polytope_path_pre,
             resolution: lines[1].parse().unwrap(),
             frame_count: lines[2].parse().unwrap(),
             min_dimension: lines[3].parse().unwrap(),
             facet_expansion: lines[4].parse().unwrap(),
+			facet_expansion_rank: lines[5].parse::<isize>().unwrap() as usize, // converts negative values to super high (integer underflow) ones. necessary for relative to rank values
             dimension: 0,
             vertices: vec![],
             edges: vec![],
             resolution_vector: Vector2::new(lines[1].parse().unwrap(), lines[1].parse().unwrap())
         }
     }
+	
+	fn clear_polytope(&mut self) {
+		self.vertices.clear();
+        self.edges.clear();
+	}
 }
 
 #[macroquad::main("nD Renderer")]
@@ -478,6 +509,8 @@ async fn main() {
     let mut previous_mouse_pos = Vector2::new(0.0, 0.0);
     
     let mut subdivisions = 1;
+	
+	let facet_expansion_key_speed = f32::exp2(0.25); // 2 ^ 1/4
     
     let mut image_index = -2;
     
@@ -575,6 +608,35 @@ async fn main() {
             if subdivisions == 0 {
                 subdivisions = 1;
             }
+        }
+        if is_key_pressed(KeyCode::T) { // increases facet_expansion
+            scene.clear_polytope();
+			scene.facet_expansion = 1.0 - (1.0 - scene.facet_expansion) / facet_expansion_key_speed;
+            load_polytope(&mut scene);
+        }
+		if is_key_pressed(KeyCode::G) { // decreases facet_expansion
+            scene.clear_polytope();
+			scene.facet_expansion = 1.0 - (1.0 - scene.facet_expansion) * facet_expansion_key_speed;
+			if scene.facet_expansion < 1.0 - 1.0 / facet_expansion_key_speed {
+				scene.facet_expansion = 0.0;
+			}
+            load_polytope(&mut scene);
+        }
+        if is_key_pressed(KeyCode::Y) {
+            scene.clear_polytope();
+			scene.facet_expansion_rank += 1;
+			if scene.facet_expansion_rank > scene.dimension - 1 {
+				scene.facet_expansion_rank = scene.dimension - 1;
+			}
+            load_polytope(&mut scene);
+        }
+		if is_key_pressed(KeyCode::H) {
+            scene.clear_polytope();
+			scene.facet_expansion_rank -= 1;
+			if scene.facet_expansion_rank < 2 {
+				scene.facet_expansion_rank = 2;
+			}
+            load_polytope(&mut scene);
         }
         if is_key_pressed(KeyCode::Key0) {
             scene = Scene::setup();
