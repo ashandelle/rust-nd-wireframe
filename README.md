@@ -27,6 +27,8 @@ The first one is for mp4s, and the second one is for gifs. I reccomend always re
 
 Anyway, the key bits to edit are the framerate, and the number after `-crf` is the quality. Lower values are higher quality. I don't know if these will work without an images folder, so you should probably just make that folder to be sure. Also, you're supposed to run these commands in this folder, in case that wasn't already obvious.
 
+You can also start the program through a command line, specifying the polytope .off path afterward. (Credit to MinersHavenM43)
+
 Uh yeah I think that's about it for how to use this program. The rest will dive into the specifics of the text files and stuff.
 
 ## rotations.txt
@@ -44,6 +46,7 @@ Uh yeah I think that's about it for how to use this program. The rest will dive 
 - third line is the number of frames in the animation.
 - fourth line is the minimum dimension
 - fifth line is the facet expansion, 0.0 turns it off, 1.0 is visually identical, 0.5 - 0.9 is good.
+- sixth line is the element rank to expand, negative values are interpreted as relative to the polytope's rank.
 
 ## Axes
 0 - right<br>
@@ -74,6 +77,7 @@ Q/A - move fade start forward and backward. everything behind this point doesn't
 W/S - move fade end forward and backward. everything after this point is invisible, everything behind it gets brighter and brighter until fade start<br>
 E/D - expands/contracts the extra dimensional fade, aka it controls how far you see into what's perpendicular to XYZ<br>
 R/F - controls the number of subdivisions of the edges<br>
+T/G - increase/decrease the element expansion (credit to MinersHavenM43)<br>
 <br>
 0 - reloads setup.txt<br>
 <br>
