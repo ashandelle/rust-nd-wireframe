@@ -226,8 +226,8 @@ fn load_polytope(scene: &mut Scene) {
     }
     
     // we now have the polytope_data.
+    // polytope_data stores the faces, then the cells, tera, etc. Its length is 2 less than the rank.
     if scene.facet_expansion > 0.0 {
-        
         // okay, we need to append vertices of every facet, scaled inward towards the average, to the polytope.
         for facet in 0..polytope_data[polytope_data.len() - 1].len() {
             let mut facet_vertices: Vec<usize> = vec![];
