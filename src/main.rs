@@ -3,6 +3,7 @@ use macroquad::audio::play_sound_once;
 use macroquad::miniquad::window::set_window_size;
 use macroquad::prelude::*;
 use na::Vector2;
+use nalgebra::VecStorage;
 use nalgebra::{self as na, DMatrix, DVector};
 use std;
 use std::f32::consts::TAU;
@@ -497,6 +498,8 @@ async fn main() {
     let mut shape_position = DVector::zeros(scene.dimension);
     shape_position[2] = 2.0;
     
+    // despite shape_matrix being defined the exact same way, only this variable needs to specify its type. ???
+    let mut rotational_offset: nalgebra::Matrix<f32, nalgebra::Dyn, nalgebra::Dyn, VecStorage<f32, nalgebra::Dyn, nalgebra::Dyn>> = DMatrix::identity(scene.dimension, scene.dimension);
     
     let mut render_size= 0.5;
     let mut edge_width= 1.0 / 84.0;
@@ -643,9 +646,14 @@ async fn main() {
             load_polytope(&mut scene);
             if scene.dimension != shape_position.nrows() {
                 shape_matrix = DMatrix::identity(scene.dimension, scene.dimension);
+                rotational_offset = DMatrix::identity(scene.dimension, scene.dimension);
                 shape_position = DVector::zeros(scene.dimension);
             }
             virtual_image = render_target(scene.resolution, scene.resolution);
+        }
+        if is_key_pressed(KeyCode::Key1) {
+            rotational_offset = shape_matrix.clone() * rotational_offset;
+            shape_matrix = DMatrix::identity(scene.dimension, scene.dimension);
         }
         
         if image_index > -1 {
@@ -658,13 +666,14 @@ async fn main() {
             });
             
             // render the scene
-            render(&scene.vertices, &scene.edges, subdivisions, &shape_matrix, &shape_position, edge_width, near, far, zoom, w_scale, render_size, scene.resolution_vector);
+            render(&scene.vertices, &scene.edges, subdivisions, &(&shape_matrix * &rotational_offset), &shape_position, edge_width, near, far, zoom, w_scale, render_size, scene.resolution_vector);
             
             // go back to the screen
             set_default_camera();
         }
+        
         // render the scene to the screen
-        render(&scene.vertices, &scene.edges, subdivisions, &shape_matrix, &shape_position, edge_width, near, far, zoom, w_scale, render_size, Vector2::new(screen_width(), screen_height()));
+        render(&scene.vertices, &scene.edges, subdivisions, &(&shape_matrix * &rotational_offset), &shape_position, edge_width, near, far, zoom, w_scale, render_size, Vector2::new(screen_width(), screen_height()));
         
         if image_index > -1 { // During the loop
             for i in (0..rotations.len()).step_by(2) {
