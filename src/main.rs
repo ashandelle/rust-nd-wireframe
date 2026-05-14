@@ -519,6 +519,7 @@ async fn main() {
     
     let mut rotations: Vec<usize> = vec![];
     let mut rotations_global_vs_local: Vec<bool> = vec![];
+    let mut rotation_amounts: Vec<f32> = vec![];
     
     let mut starting_position: Vec<f32> = vec![];
     let mut motion: Vec<f32> = vec![];
@@ -677,7 +678,7 @@ async fn main() {
         
         if image_index > -1 { // During the loop
             for i in (0..rotations.len()).step_by(2) {
-                let rotation_matrix = rotate_matrix(rotations[i], rotations[i + 1], TAU / (scene.frame_count as f32), shape_matrix.ncols());
+                let rotation_matrix = rotate_matrix(rotations[i], rotations[i + 1], rotation_amounts[i / 2] / (scene.frame_count as f32), shape_matrix.ncols());
                 if rotations_global_vs_local[i / 2] {
                     shape_matrix = &shape_matrix * rotation_matrix;
                 } else {
@@ -714,7 +715,7 @@ async fn main() {
                 shape_position[i] = 0.0;
             }
             for i in (0..rotations.len()).step_by(2) {
-                let rotation_matrix = rotate_matrix(rotations[i], rotations[i + 1], (TAU / (scene.frame_count as f32)) * (-image_index) as f32, shape_matrix.ncols());
+                let rotation_matrix = rotate_matrix(rotations[i], rotations[i + 1], (rotation_amounts[i / 2] / (scene.frame_count as f32)) * (-image_index) as f32, shape_matrix.ncols());
                 if rotations_global_vs_local[i / 2] {
                     shape_matrix = &shape_matrix * rotation_matrix;
                 } else {
@@ -738,23 +739,36 @@ async fn main() {
             
             rotations.clear();
             rotations_global_vs_local.clear();
+            rotation_amounts.clear();
             
             let mut rotation_file_values: Vec<usize> = vec![];
             
             for line in rotation_file_contents.lines() {
+                let mut value_count = 0;
+                
                 // go through the line of text to find the numbers
                 for number_string in line.split(" ") {
                     let number: usize = number_string.parse().unwrap();
                     
                     rotation_file_values.push(number);
+                    value_count += 1;
+                }
+                
+                if value_count == 2 {
+                    rotation_file_values.push(0);
+                }
+                if value_count == 3 {
+                    rotation_file_values.push(1);
                 }
             }
             
-            for i in (0..rotation_file_values.len()).step_by(3) {
+            for i in (0..rotation_file_values.len()).step_by(4) {
                 rotations.push(rotation_file_values[i]);
                 rotations.push(rotation_file_values[i + 1]);
                 
                 rotations_global_vs_local.push(rotation_file_values[i + 2] == 1);
+                
+                rotation_amounts.push(TAU / (rotation_file_values[i + 3] as f32));
             }
             
             let motion_file_contents = std::fs::read_to_string("./motion.txt").unwrap();
