@@ -33,7 +33,9 @@ Uh yeah I think that's about it for how to use this program. The rest will dive 
 
 ## rotations.txt
 - every line is a plane of rotation.
-- first two numbers are the axes, last number is 0 for a camera space rotation and 1 for an object space rotation.
+- first two numbers are the axes
+- third number is 0 for a camera space rotation and 1 for the saved camera space rotation.
+- fourth number (optional) is the fraction of a full turn it rotates. 1 is 360 degrees, 2 is 180 degrees, 3 is 120 degrees, etc.
 
 ## motion.txt
 - first line is the position of the object initially. if it's too short, don't worry, the axes after just won't be set, it won't crash.
@@ -80,5 +82,6 @@ R/F - controls the number of subdivisions of the edges<br>
 T/G - increase/decrease the element expansion (credit to MinersHavenM43)<br>
 <br>
 0 - reloads setup.txt<br>
+1 - saves current camera rotation for more advanced animation<br>
 <br>
 Enter - starts the animation, and starts writing frames to ./images. be warned- you can still do all the usual inputs while it's rendering, if you accidentally pan or something it will be visible in the animation.
