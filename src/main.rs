@@ -1,5 +1,6 @@
 use macroquad::audio::load_sound_from_bytes;
 use macroquad::audio::play_sound_once;
+use macroquad::color;
 use macroquad::miniquad::window::set_window_size;
 use macroquad::prelude::*;
 use na::Vector2;
@@ -215,6 +216,7 @@ fn load_polytope(scene: &mut Scene) {
                     if !found_duplicate {
                         scene.edges.push(vertex_index_a);
                         scene.edges.push(vertex_index_b);
+                        scene.edge_colors.push(WHITE);
                     }
                 }
             }
@@ -280,6 +282,59 @@ fn load_polytope(scene: &mut Scene) {
                 
                 scene.edges.push(past_vertex_count + facet_vertices.iter().position(|x| *x == *edge).unwrap());
             }
+            
+            for i in 0..facet_edges.len()/2 {
+                if rank == 3 {
+                    match facet_vertices.len() {
+                        3 => {
+                            // A2, red
+                            scene.edge_colors.push(Color { r: 213.0/255.0, g: 56.0/255.0, b: 56.0/255.0, a: 1.0 });
+                        }
+                        6 => {
+                            // G2/2, light red
+                            scene.edge_colors.push(Color { r: 208.0/255.0, g: 100.0/255.0, b: 100.0/255.0, a: 1.0 });
+                        }
+                        4 => {
+                            // lies roughly on the axes
+                            if (f32::abs(facet_center[0]) < 0.01 && f32::abs(facet_center[1]) < 0.01) ||
+                            (f32::abs(facet_center[0]) < 0.01 && f32::abs(facet_center[2]) < 0.01) ||
+                            (f32::abs(facet_center[2]) < 0.01 && f32::abs(facet_center[1]) < 0.01) {
+                                // exclude H3
+                                if polytope_data[0].len() < 30 {
+                                    // B2, blue
+                                    scene.edge_colors.push(Color { r: 43.0/255.0, g: 38.0/255.0, b: 135.0/255.0, a: 1.0 });
+                                    continue;
+                                }
+                            }
+                            
+                            // K2, yellow
+                            scene.edge_colors.push(Color { r: 229.0/255.0, g: 188.0/255.0, b: 38.0/255.0, a: 1.0 });
+                        }
+                        8 => {
+                            // I2(8)/2, light blue
+                            scene.edge_colors.push(Color { r: 87.0/255.0, g: 83.0/255.0, b: 153.0/255.0, a: 1.0 });
+                        }
+                        5 => {
+                            // H2, purple
+                            scene.edge_colors.push(Color { r: 139.0/255.0, g: 58.0/255.0, b: 177.0/255.0, a: 1.0 });
+                            // green
+                            // scene.edge_colors.push(Color { r: 66.0/255.0, g: 210.0/255.0, b: 58.0/255.0, a: 1.0 });
+                        }
+                        10 => {
+                            // I2(10)/2, light purple
+                            scene.edge_colors.push(Color { r: 147.0/255.0, g: 98.0/255.0, b: 170.0/255.0, a: 1.0 });
+                            // light green
+                            // scene.edge_colors.push(Color { r: 86.0/255.0, g: 220.0/255.0, b: 129.0/255.0, a: 1.0 });
+                        }
+                        _ => {
+                            // ???
+                            scene.edge_colors.push(MAGENTA);
+                        }
+                    }
+                } else {
+                    scene.edge_colors.push(WHITE);
+                }
+            }
         }
         
     } else {
@@ -287,23 +342,23 @@ fn load_polytope(scene: &mut Scene) {
     }
 }
 
-fn draw_variable_width_line(start_point: Vector2<f32>, end_point: Vector2<f32>, start_radius: f32, end_radius: f32, color: Color) {
+fn draw_variable_width_line(start_point: Vec2, end_point: Vec2, start_radius: f32, end_radius: f32, color: Color) {
     if color.a > 0.0 {
         let edge_direction = (end_point - start_point).normalize();
-        let left_of_edge = Vector2::new(edge_direction.y, -edge_direction.x);
-        let right_of_edge = Vector2::new(-edge_direction.y, edge_direction.x);
+        let left_of_edge = vec2(edge_direction.y, -edge_direction.x);
+        let right_of_edge = vec2(-edge_direction.y, edge_direction.x);
         
         draw_triangle(
-            vec2(start_point.x + (left_of_edge.x * start_radius), start_point.y + (left_of_edge.y * start_radius)),
-            vec2(start_point.x + (right_of_edge.x * start_radius), start_point.y + (right_of_edge.y * start_radius)),
-            vec2(end_point.x + (left_of_edge.x * end_radius), end_point.y + (left_of_edge.y * end_radius)),
+            start_point + (left_of_edge * start_radius),
+            start_point + (right_of_edge * start_radius),
+            end_point + (left_of_edge * end_radius),
             color
         );
         
         draw_triangle(
-            vec2(end_point.x + (left_of_edge.x * end_radius), end_point.y + (left_of_edge.y * end_radius)),
-            vec2(end_point.x + (right_of_edge.x * end_radius), end_point.y + (right_of_edge.y * end_radius)),
-            vec2(start_point.x + (right_of_edge.x * start_radius), start_point.y + (right_of_edge.y * start_radius)),
+            end_point + (left_of_edge * end_radius),
+            end_point + (right_of_edge * end_radius),
+            start_point + (right_of_edge * start_radius),
             color
         );
     }
@@ -318,8 +373,8 @@ fn mouse_control(previous_mouse_pos: Vector2<f32>, dimension: usize, shape_matri
     }
 }
 
-fn project_vertex(vertex: &DVector<f32>, render_size: f32, screen_size: Vector2<f32>) -> Vector2<f32> {
-    let mut screen_vertex = Vector2::new(-vertex[0], vertex[1]) / (vertex[2]);
+fn project_vertex(vertex: &DVector<f32>, render_size: f32, screen_size: Vec2) -> Vec2 {
+    let mut screen_vertex = Vec2::new(-vertex[0], vertex[1]) / (vertex[2]);
     screen_vertex *= -screen_size.y * render_size;
     screen_vertex += screen_size / 2.0;
     
@@ -338,20 +393,9 @@ fn color_from_hue(hue: f32) -> Color {
     return Color::new(r, g, b, 1.0);
 }
 
-fn color_from_wv(vector: &DVector<f32>, w_scale: f32) -> Color {
+fn color_from_wv(vector: &DVector<f32>, w_scale: f32, edge_color: Color) -> Color {
     if vector.len() < 4 {
-        return WHITE;
-    }
-    
-    if vector.len() == 4 {
-        let positive_w_component = f32::clamp(vector[3] * w_scale, 0.0, 1.0);
-        let negative_w_component = f32::clamp(-vector[3] * w_scale, 0.0, 1.0);
-
-        if vector[3] > 0.0 {
-            return Color::new(1.0, f32::lerp(1.0, 0.5, (positive_w_component * 2.0).min(1.0)), f32::lerp(1.0, 0.0, (positive_w_component * 2.0).min(1.0)), 1.0 - positive_w_component);
-        } else {
-            return Color::new(f32::lerp(1.0, 0.0, (negative_w_component * 2.0).min(1.0)), f32::lerp(1.0, 0.5, (negative_w_component * 2.0).min(1.0)), 1.0, 1.0 - negative_w_component);
-        }
+        return edge_color;
     }
     
     let wv_vector = Vec2::new(vector[3], vector[4]);
@@ -360,9 +404,9 @@ fn color_from_wv(vector: &DVector<f32>, w_scale: f32) -> Color {
     let fade_strength = f32::min(wv_vector.length() * w_scale, 1.0);
     
     return Color::new(
-        f32::lerp(1.0, fade_to_color.r, (fade_strength * 2.0).min(1.0)),
-        f32::lerp(1.0, fade_to_color.g, (fade_strength * 2.0).min(1.0)),
-        f32::lerp(1.0, fade_to_color.b, (fade_strength * 2.0).min(1.0)),
+        f32::lerp(edge_color.r, fade_to_color.r, (fade_strength * 2.0).min(1.0)),
+        f32::lerp(edge_color.g, fade_to_color.g, (fade_strength * 2.0).min(1.0)),
+        f32::lerp(edge_color.b, fade_to_color.b, (fade_strength * 2.0).min(1.0)),
         1.0 - fade_strength
     );
 }
@@ -384,12 +428,12 @@ fn fade_from_depth(z: f32, near: f32, far: f32, zoom: f32) -> f32 {
     1.0 - clamp(f32::inverse_lerp(near + zoom, far + zoom, z), 0.0, 1.0)
 }
 
-fn render(vertices: &Vec<DVector<f32>>, edges: &Vec<usize>, subdivisions: i32, shape_matrix: &DMatrix<f32>, shape_position: &DVector<f32>, edge_width: f32, near: f32, far: f32, zoom: f32, w_scale: f32, render_size: f32, screen_size: Vector2<f32>) {
+fn render(scene: &Scene, subdivisions: i32, shape_matrix: &DMatrix<f32>, shape_position: &DVector<f32>, edge_width: f32, near: f32, far: f32, zoom: f32, w_scale: f32, render_size: f32, screen_size: &Vec2) {
     clear_background(BLACK);
     
     let mut local_space_vertices: Vec<DVector<f32>> = Vec::new();
 
-    for vertex in vertices {
+    for vertex in &scene.vertices {
         // Vertex in world/camera space
         let transformed_vertex = (shape_matrix * vertex) + shape_position;
         
@@ -397,10 +441,10 @@ fn render(vertices: &Vec<DVector<f32>>, edges: &Vec<usize>, subdivisions: i32, s
         local_space_vertices.push(transformed_vertex);
     }
     
-    for i in (0..edges.len()).step_by(2) {
+    for i in (0..scene.edges.len()).step_by(2) {
         // A and B are the ends of the edges, 1 and 2 are the ends of the sub edges
-        let vertex_a = &local_space_vertices[edges[i]];
-        let vertex_b = &local_space_vertices[edges[i + 1]];
+        let vertex_a = &local_space_vertices[scene.edges[i]];
+        let vertex_b = &local_space_vertices[scene.edges[i + 1]];
         
         for s in 0..subdivisions {
             let vertex_1 = vertex_a.lerp(&vertex_b, (s as f32) / (subdivisions as f32));
@@ -411,28 +455,14 @@ fn render(vertices: &Vec<DVector<f32>>, edges: &Vec<usize>, subdivisions: i32, s
             
             let edge_center = (&vertex_1 + &vertex_2) / 2.0;
             
-            let mut color = color_from_wv(&edge_center, w_scale);
-            // let mut color = color_from_off_axis(&edge_center, w_scale, dimension);
+            let mut color = color_from_wv(&edge_center, w_scale, scene.edge_colors[i / 2]);
             color.a *= fade_from_depth(edge_center[2], near, far, zoom);
             color.a *= 1.0 - (distance_from_nvolume(&edge_center, 5) * w_scale).clamp(0.0, 1.0);
             
-            draw_variable_width_line(project_vertex(&vertex_1, render_size, screen_size), project_vertex(&vertex_2, render_size, screen_size), radius_1 * render_size, radius_2 * render_size, color);
+            draw_variable_width_line(project_vertex(&vertex_1, render_size, screen_size.clone()), project_vertex(&vertex_2, render_size, screen_size.clone()), radius_1 * render_size, radius_2 * render_size, color);
         }
         
     }
-    
-    // Render vertices
-    // for i in 0..local_space_vertices.len() {
-    //     let coord = project_vertex(&local_space_vertices[i], render_size, screen_size);
-        
-    //     let mut color = color_from_wv(&local_space_vertices[i], w_scale);
-    //     // let mut color = color_from_off_axis(&local_space_vertices[i], w_scale, dimension);
-        
-    //     color.a *= fade_from_depth(local_space_vertices[i][2], near, far, zoom);
-    //     color.a *= 1.0 - (distance_from_nvolume(&local_space_vertices[i], 5) * w_scale).clamp(0.0, 1.0);
-        
-    //     draw_circle(coord.x, coord.y, (screen_size.y * edge_width * render_size) / local_space_vertices[i][2], color);
-    // }
 }
 
 struct Scene {
@@ -445,6 +475,7 @@ struct Scene {
     dimension: usize,
     vertices: Vec<DVector<f32>>,
     edges: Vec<usize>,
+    edge_colors: Vec<Color>,
     resolution_vector: Vector2<f32>,
 }
 
@@ -476,6 +507,7 @@ impl Scene {
             dimension: 0,
             vertices: vec![],
             edges: vec![],
+            edge_colors: vec![],
             resolution_vector: Vector2::new(lines[1].parse().unwrap(), lines[1].parse().unwrap())
         }
     }
@@ -667,14 +699,14 @@ async fn main() {
             });
             
             // render the scene
-            render(&scene.vertices, &scene.edges, subdivisions, &(&shape_matrix * &rotational_offset), &shape_position, edge_width, near, far, zoom, w_scale, render_size, scene.resolution_vector);
+            render(&scene, subdivisions, &(&shape_matrix * &rotational_offset), &shape_position, edge_width, near, far, zoom, w_scale, render_size, &vec2(scene.resolution_vector.x, scene.resolution_vector.y));
             
             // go back to the screen
             set_default_camera();
         }
         
         // render the scene to the screen
-        render(&scene.vertices, &scene.edges, subdivisions, &(&shape_matrix * &rotational_offset), &shape_position, edge_width, near, far, zoom, w_scale, render_size, Vector2::new(screen_width(), screen_height()));
+        render(&scene, subdivisions, &(&shape_matrix * &rotational_offset), &shape_position, edge_width, near, far, zoom, w_scale, render_size, &vec2(screen_width(), screen_height()));
         
         if image_index > -1 { // During the loop
             for i in (0..rotations.len()).step_by(2) {
