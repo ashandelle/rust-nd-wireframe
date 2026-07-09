@@ -84,7 +84,13 @@ fn color_from_wv(vector: &DVector<f32>, w_scale: f32, edge_color: Color) -> Colo
         return edge_color;
     }
     
-    let wv_vector = Vec2::new(vector[3], vector[4]);
+    let wv_vector = Vec2::new(vector[3], {
+        if vector.len() == 4 {
+            0.0
+        } else {
+            vector[4]
+        }
+    });
     
     let fade_to_color = color_from_hue((wv_vector.to_angle() / TAU) + 0.5 + (1.0 / 12.0));
     let fade_strength = f32::min(wv_vector.length() * w_scale, 1.0);
