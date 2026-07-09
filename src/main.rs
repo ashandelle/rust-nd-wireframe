@@ -22,14 +22,6 @@ mod math;
 mod scene;
 mod render;
 
-fn mouse_control(previous_mouse_pos: Vector2<f32>, dimension: usize, shape_matrix: DMatrix<f32>, axis: usize, sensitivity: f32) -> DMatrix<f32> {
-    if axis < dimension {
-        return rotate_matrix(1, axis, (mouse_position().1 - previous_mouse_pos.y) * -sensitivity, dimension) * rotate_matrix(0, axis, (mouse_position().0 - previous_mouse_pos.x) * sensitivity, dimension) * shape_matrix;
-    } else {
-        return shape_matrix;
-    }
-}
-
 #[macroquad::main("nD Renderer")]
 async fn main() {
     let args: Vec<String> = env::args().collect();
@@ -58,6 +50,7 @@ async fn main() {
     let mut far = 0.5;
     
     let mut previous_mouse_pos = Vector2::new(0.0, 0.0);
+    let mut mouse_lock: bool = false;
     
     let mut subdivisions = 1;
 	
@@ -83,8 +76,29 @@ async fn main() {
 
     loop {
         // Rotate Shape
+
+        if !mouse_lock && is_key_down(KeyCode::J) {
+            mouse_lock = true;
+            // set_cursor_grab(true);
+            show_mouse(false);
+        }
+
+        if mouse_lock && (is_mouse_button_down(MouseButton::Left) || is_mouse_button_down(MouseButton::Middle) || is_mouse_button_down(MouseButton::Right)) {
+            mouse_lock = false;
+            // set_cursor_grab(false);
+            show_mouse(true);
+            // (previous_mouse_pos.x, previous_mouse_pos.y) = mouse_position();
+        }
+
+        fn mouse_control(previous_mouse_pos: Vector2<f32>, dimension: usize, shape_matrix: DMatrix<f32>, axis: usize, sensitivity: f32) -> DMatrix<f32> {
+            if axis < dimension {
+                return rotate_matrix(1, axis, (mouse_position().1 - previous_mouse_pos.y) * -sensitivity, dimension) * rotate_matrix(0, axis, (mouse_position().0 - previous_mouse_pos.x) * sensitivity, dimension) * shape_matrix;
+            } else {
+                return shape_matrix;
+            }
+        }
         
-        if is_mouse_button_down(MouseButton::Left) || is_mouse_button_down(MouseButton::Middle) {
+        if mouse_lock || is_mouse_button_down(MouseButton::Left) || is_mouse_button_down(MouseButton::Middle) {
             if is_key_down(KeyCode::LeftControl) {
                 shape_matrix = mouse_control(previous_mouse_pos, scene.dimension, shape_matrix, 3, -1.0/216.0);
             } else if is_key_down(KeyCode::Z) {
