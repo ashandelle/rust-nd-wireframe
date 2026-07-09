@@ -13,6 +13,10 @@ use std::usize;
 use std::vec;
 use std::env;
 
+use crate::loader::load_polytope;
+
+mod loader;
+
 fn rotate_matrix(axis_1: usize, axis_2: usize, angle_in_radians: f32, dimension: usize) -> DMatrix<f32> {
     let mut matrix = DMatrix::identity(dimension, dimension);
     

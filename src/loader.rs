@@ -1,4 +1,4 @@
-fn load_polytope(scene: &mut Scene) {
+pub fn load_polytope(scene: &mut Scene) {
     if !std::path::Path::new(scene.polytope_path.as_str()).exists() {
 		panic!("file doesnt exist!!!!");
     }
