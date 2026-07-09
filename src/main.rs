@@ -34,6 +34,8 @@ fn mouse_control(previous_mouse_pos: Vector2<f32>, dimension: usize, shape_matri
 async fn main() {
     let args: Vec<String> = env::args().collect();
 
+    std::fs::create_dir_all("./images").unwrap(); // Create images folder if it does not exist already
+
     const DONE_SOUND_BYTES: &[u8] = include_bytes!(".././done.wav");
     
     let mut scene = Scene::setup(&args);
