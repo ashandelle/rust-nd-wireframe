@@ -6,14 +6,16 @@ use na::Vector2;
 use nalgebra::VecStorage;
 use nalgebra::{self as na, DMatrix, DVector};
 use std;
+use std::env;
 use std::f32::consts::TAU;
 use std::f32;
 use std::usize;
 use std::vec;
-use std::env;
 
 use crate::loader::load_polytope;
+use crate::scene::Scene;
 
+mod scene;
 mod loader;
 
 fn rotate_matrix(axis_1: usize, axis_2: usize, angle_in_radians: f32, dimension: usize) -> DMatrix<f32> {
@@ -157,64 +159,13 @@ fn render(scene: &Scene, subdivisions: i32, shape_matrix: &DMatrix<f32>, shape_p
     }
 }
 
-struct Scene {
-    polytope_path: String,
-    resolution: u32,
-    frame_count: i32,
-    facet_expansion: f32,
-	facet_expansion_rank: usize,
-    min_dimension: usize,
-    dimension: usize,
-    vertices: Vec<DVector<f32>>,
-    edges: Vec<usize>,
-    edge_colors: Vec<Color>,
-    resolution_vector: Vector2<f32>,
-}
-
-impl Scene {
-    fn setup() -> Self {
-        if !std::path::Path::new("./setup.txt").exists() {
-            panic!("no setup.txt file!!!!");
-        }
-        
-        let setup_file_contents = std::fs::read_to_string("./setup.txt").unwrap();
-        let lines: Vec<&str> = setup_file_contents.lines().collect();
-        
-		let args: Vec<String> = env::args().collect();
-		let polytope_path_pre: String;
-		if args.len() < 2 {
-			polytope_path_pre = lines[0].to_string();
-		}
-		else {
-			polytope_path_pre = args[1].clone();
-		}
-		
-        Scene {
-			polytope_path: polytope_path_pre,
-            resolution: lines[1].parse().unwrap(),
-            frame_count: lines[2].parse().unwrap(),
-            min_dimension: lines[3].parse().unwrap(),
-            facet_expansion: lines[4].parse().unwrap(),
-			facet_expansion_rank: lines[5].parse::<isize>().unwrap() as usize, // converts negative values to super high (integer underflow) ones. necessary for relative to rank values
-            dimension: 0,
-            vertices: vec![],
-            edges: vec![],
-            edge_colors: vec![],
-            resolution_vector: Vector2::new(lines[1].parse().unwrap(), lines[1].parse().unwrap())
-        }
-    }
-	
-	fn clear_polytope(&mut self) {
-		self.vertices.clear();
-        self.edges.clear();
-	}
-}
-
 #[macroquad::main("nD Renderer")]
 async fn main() {
+    let args: Vec<String> = env::args().collect();
+
     const DONE_SOUND_BYTES: &[u8] = include_bytes!(".././done.wav");
     
-    let mut scene = Scene::setup();
+    let mut scene = Scene::setup(&args);
     
     load_polytope(&mut scene);
     
@@ -367,7 +318,7 @@ async fn main() {
             load_polytope(&mut scene);
         }
         if is_key_pressed(KeyCode::Key0) {
-            scene = Scene::setup();
+            scene = Scene::setup(&args);
             load_polytope(&mut scene);
             if scene.dimension != shape_position.nrows() {
                 shape_matrix = DMatrix::identity(scene.dimension, scene.dimension);
