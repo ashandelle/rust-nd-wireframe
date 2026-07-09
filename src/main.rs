@@ -237,7 +237,11 @@ async fn main() {
                 }
             }
             
-            virtual_image.texture.get_texture_data().export_png(&format!("./images/{:03}.png", image_index));
+            let mut img = virtual_image.texture.get_texture_data();
+            for pix in img.get_image_data_mut() { // Force saved image to have no transparency
+                pix[3] = 255;
+            }
+            img.export_png(&format!("./images/{:03}.png", image_index));
             
             image_index += 1;
         }
