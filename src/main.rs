@@ -156,10 +156,7 @@ async fn main() {
             subdivisions += 1;
         }
         if is_key_pressed(KeyCode::F) {
-            subdivisions -= 1;
-            if subdivisions == 0 {
-                subdivisions = 1;
-            }
+            subdivisions = (subdivisions - 1).max(1);
         }
         if is_key_pressed(KeyCode::T) { // increases facet_expansion
             scene.clear_polytope();
