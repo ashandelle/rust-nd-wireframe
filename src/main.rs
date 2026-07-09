@@ -12,23 +12,13 @@ use std::f32;
 use std::usize;
 use std::vec;
 
-use crate::loader::load_polytope;
+use crate::loader::*;
+use crate::math::*;
 use crate::scene::Scene;
 
 mod scene;
 mod loader;
-
-fn rotate_matrix(axis_1: usize, axis_2: usize, angle_in_radians: f32, dimension: usize) -> DMatrix<f32> {
-    let mut matrix = DMatrix::identity(dimension, dimension);
-    
-    matrix[axis_1 + (axis_1 * dimension)] = f32::cos(angle_in_radians);
-    matrix[axis_2 + (axis_1 * dimension)] = f32::sin(angle_in_radians);
-    
-    matrix[axis_1 + (axis_2 * dimension)] = -f32::sin(angle_in_radians);
-    matrix[axis_2 + (axis_2 * dimension)] = f32::cos(angle_in_radians);
-    
-    return matrix;
-}
+mod math;
 
 fn draw_variable_width_line(start_point: Vec2, end_point: Vec2, start_radius: f32, end_radius: f32, color: Color) {
     if color.a > 0.0 {
@@ -59,14 +49,6 @@ fn mouse_control(previous_mouse_pos: Vector2<f32>, dimension: usize, shape_matri
     } else {
         return shape_matrix;
     }
-}
-
-fn project_vertex(vertex: &DVector<f32>, render_size: f32, screen_size: Vec2) -> Vec2 {
-    let mut screen_vertex = Vec2::new(-vertex[0], vertex[1]) / (vertex[2]);
-    screen_vertex *= -screen_size.y * render_size;
-    screen_vertex += screen_size / 2.0;
-    
-    screen_vertex
 }
 
 fn color_from_hue(hue: f32) -> Color {
@@ -103,19 +85,6 @@ fn color_from_wv(vector: &DVector<f32>, w_scale: f32, edge_color: Color) -> Colo
         f32::lerp(edge_color.b, fade_to_color.b, (fade_strength * 2.0).min(1.0)),
         1.0 - fade_strength
     );
-}
-
-fn distance_from_nvolume(vertex: &DVector<f32>, n: usize) -> f32 {
-    if vertex.len() < n {
-        return 0.0;
-    }
-    
-    let mut distance: f32 = 0.0;
-    for axis in 0..(vertex.len() - n) {
-        distance += vertex[axis + n] * vertex[axis + n];
-    }
-    
-    f32::sqrt(distance)
 }
 
 fn fade_from_depth(z: f32, near: f32, far: f32, zoom: f32) -> f32 {
