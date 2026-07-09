@@ -28,57 +28,6 @@ fn rotate_matrix(axis_1: usize, axis_2: usize, angle_in_radians: f32, dimension:
     return matrix;
 }
 
-fn get_vertices_from_element(polytope_data: &Vec<Vec<Vec<usize>>>, element_vertices: &mut Vec<usize>, element_edges: &mut Vec<usize>, rank: usize, index: usize) {
-    // loop through the facet
-    let mut i = 0;
-    for sub_element in &polytope_data[rank - 2][index] {
-        if rank == 2 { // Faces, add vertices
-            element_vertices.push(*sub_element);
-            
-            // Add the edge, which will be a pair of two integers, each pointing to a vertex ID in the global polytope.
-            element_edges.push(*sub_element);
-            
-            // Get the next vertex ID ID, and append it. Remember that polygons are circular.
-            let next_vertex_id_id = (i + 1) % polytope_data[rank - 2][index].len();
-            element_edges.push(polytope_data[rank - 2][index][next_vertex_id_id]);
-        } else { // Non faces, check sub elements
-            let mut sub_vertices: Vec<usize> = vec![];
-            let mut sub_edges: Vec<usize> = vec![];
-            
-            get_vertices_from_element(polytope_data, &mut sub_vertices, &mut sub_edges, rank - 1, *sub_element);
-            
-            // Merge faces and other elements correctly
-            for vertex in sub_vertices.iter() {
-                if !element_vertices.contains(vertex) {
-                    element_vertices.push(vertex.clone());
-                }
-            }
-            for edge in (0..sub_edges.len()).step_by(2) {
-                let vertex_index_a = sub_edges[edge];
-                let vertex_index_b = sub_edges[edge + 1];
-                
-                let mut found_duplicate = false;
-                for edge_start_index in (0..element_edges.len()).step_by(2) {
-                    let edge_start = element_edges[edge_start_index];
-                    let edge_end = element_edges[edge_start_index + 1];
-                    
-                    if (vertex_index_a == edge_start && vertex_index_b == edge_end) || (vertex_index_a == edge_end && vertex_index_b == edge_start) {
-                        found_duplicate = true;
-                        break;
-                    }
-                }
-                
-                if !found_duplicate {
-                    element_edges.push(vertex_index_a);
-                    element_edges.push(vertex_index_b);
-                }
-            }
-        }
-        
-        i += 1;
-    }
-}
-
 fn draw_variable_width_line(start_point: Vec2, end_point: Vec2, start_radius: f32, end_radius: f32, color: Color) {
     if color.a > 0.0 {
         let edge_direction = (end_point - start_point).normalize();
