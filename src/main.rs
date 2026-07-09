@@ -1,6 +1,5 @@
 use macroquad::audio::load_sound_from_bytes;
 use macroquad::audio::play_sound_once;
-use macroquad::color;
 use macroquad::miniquad::window::set_window_size;
 use macroquad::prelude::*;
 use na::Vector2;
