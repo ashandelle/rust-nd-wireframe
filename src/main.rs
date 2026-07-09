@@ -8,17 +8,18 @@ use nalgebra::{self as na, DMatrix, DVector};
 use std;
 use std::env;
 use std::f32::consts::TAU;
-use std::f32;
 use std::usize;
 use std::vec;
 
+use crate::color::*;
 use crate::loader::*;
 use crate::math::*;
 use crate::scene::Scene;
 
-mod scene;
+mod color;
 mod loader;
 mod math;
+mod scene;
 
 fn draw_variable_width_line(start_point: Vec2, end_point: Vec2, start_radius: f32, end_radius: f32, color: Color) {
     if color.a > 0.0 {
@@ -49,46 +50,6 @@ fn mouse_control(previous_mouse_pos: Vector2<f32>, dimension: usize, shape_matri
     } else {
         return shape_matrix;
     }
-}
-
-fn color_from_hue(hue: f32) -> Color {
-    let kr = f32::fract((5.0 + hue * 6.0) / 6.0) * 6.0;
-    let kg = f32::fract((3.0 + hue * 6.0) / 6.0) * 6.0;
-    let kb = f32::fract((1.0 + hue * 6.0) / 6.0) * 6.0;
-    
-    let r = 1.0 - f32::max(f32::min(f32::min(kr, 4.0 - kr), 1.0), 0.0);
-    let g = 1.0 - f32::max(f32::min(f32::min(kg, 4.0 - kg), 1.0), 0.0);
-    let b = 1.0 - f32::max(f32::min(f32::min(kb, 4.0 - kb), 1.0), 0.0);
-    
-    return Color::new(r, g, b, 1.0);
-}
-
-fn color_from_wv(vector: &DVector<f32>, w_scale: f32, edge_color: Color) -> Color {
-    if vector.len() < 4 {
-        return edge_color;
-    }
-    
-    let wv_vector = Vec2::new(vector[3], {
-        if vector.len() == 4 {
-            0.0
-        } else {
-            vector[4]
-        }
-    });
-    
-    let fade_to_color = color_from_hue((wv_vector.to_angle() / TAU) + 0.5 + (1.0 / 12.0));
-    let fade_strength = f32::min(wv_vector.length() * w_scale, 1.0);
-    
-    return Color::new(
-        f32::lerp(edge_color.r, fade_to_color.r, (fade_strength * 2.0).min(1.0)),
-        f32::lerp(edge_color.g, fade_to_color.g, (fade_strength * 2.0).min(1.0)),
-        f32::lerp(edge_color.b, fade_to_color.b, (fade_strength * 2.0).min(1.0)),
-        1.0 - fade_strength
-    );
-}
-
-fn fade_from_depth(z: f32, near: f32, far: f32, zoom: f32) -> f32 {
-    1.0 - clamp(f32::inverse_lerp(near + zoom, far + zoom, z), 0.0, 1.0)
 }
 
 fn render(scene: &Scene, subdivisions: i32, shape_matrix: &DMatrix<f32>, shape_position: &DVector<f32>, edge_width: f32, near: f32, far: f32, zoom: f32, w_scale: f32, render_size: f32, screen_size: &Vec2) {
