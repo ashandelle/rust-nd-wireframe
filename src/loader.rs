@@ -121,7 +121,7 @@ pub fn load_polytope(scene: &mut Scene) {
         }
 		
 		if scene.facet_expansion_rank > usize::MAX / 2 { // relative value
-			scene.facet_expansion_rank = rank as usize + usize::MAX - scene.facet_expansion_rank + 1; // just let me use integer overflow >:(
+			scene.facet_expansion_rank = (rank as usize).wrapping_add(usize::MAX).wrapping_sub(scene.facet_expansion_rank) + 1; // just let me use integer overflow >:(
 		}
 		if scene.facet_expansion_rank > rank as usize - 1 {
 			scene.facet_expansion_rank = rank as usize - 1;
@@ -261,7 +261,7 @@ pub fn load_polytope(scene: &mut Scene) {
                 scene.edges.push(past_vertex_count + facet_vertices.iter().position(|x| *x == *edge).unwrap());
             }
             
-            for i in 0..facet_edges.len()/2 {
+            for _i in 0..facet_edges.len()/2 {
                 if rank == 3 {
                     match facet_vertices.len() {
                         3 => {

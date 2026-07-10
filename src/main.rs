@@ -6,209 +6,31 @@ use na::Vector2;
 use nalgebra::VecStorage;
 use nalgebra::{self as na, DMatrix, DVector};
 use std;
+use std::env;
 use std::f32::consts::TAU;
-use std::f32;
 use std::usize;
 use std::vec;
-use std::env;
 
-use crate::loader::load_polytope;
+use crate::loader::*;
+use crate::math::*;
+use crate::scene::*;
+use crate::render::*;
 
+mod color;
 mod loader;
-
-fn rotate_matrix(axis_1: usize, axis_2: usize, angle_in_radians: f32, dimension: usize) -> DMatrix<f32> {
-    let mut matrix = DMatrix::identity(dimension, dimension);
-    
-    matrix[axis_1 + (axis_1 * dimension)] = f32::cos(angle_in_radians);
-    matrix[axis_2 + (axis_1 * dimension)] = f32::sin(angle_in_radians);
-    
-    matrix[axis_1 + (axis_2 * dimension)] = -f32::sin(angle_in_radians);
-    matrix[axis_2 + (axis_2 * dimension)] = f32::cos(angle_in_radians);
-    
-    return matrix;
-}
-
-fn draw_variable_width_line(start_point: Vec2, end_point: Vec2, start_radius: f32, end_radius: f32, color: Color) {
-    if color.a > 0.0 {
-        let edge_direction = (end_point - start_point).normalize();
-        let left_of_edge = vec2(edge_direction.y, -edge_direction.x);
-        let right_of_edge = vec2(-edge_direction.y, edge_direction.x);
-        
-        draw_triangle(
-            start_point + (left_of_edge * start_radius),
-            start_point + (right_of_edge * start_radius),
-            end_point + (left_of_edge * end_radius),
-            color
-        );
-        
-        draw_triangle(
-            end_point + (left_of_edge * end_radius),
-            end_point + (right_of_edge * end_radius),
-            start_point + (right_of_edge * start_radius),
-            color
-        );
-    }
-    
-}
-
-fn mouse_control(previous_mouse_pos: Vector2<f32>, dimension: usize, shape_matrix: DMatrix<f32>, axis: usize, sensitivity: f32) -> DMatrix<f32> {
-    if axis < dimension {
-        return rotate_matrix(1, axis, (mouse_position().1 - previous_mouse_pos.y) * -sensitivity, dimension) * rotate_matrix(0, axis, (mouse_position().0 - previous_mouse_pos.x) * sensitivity, dimension) * shape_matrix;
-    } else {
-        return shape_matrix;
-    }
-}
-
-fn project_vertex(vertex: &DVector<f32>, render_size: f32, screen_size: Vec2) -> Vec2 {
-    let mut screen_vertex = Vec2::new(-vertex[0], vertex[1]) / (vertex[2]);
-    screen_vertex *= -screen_size.y * render_size;
-    screen_vertex += screen_size / 2.0;
-    
-    screen_vertex
-}
-
-fn color_from_hue(hue: f32) -> Color {
-    let kr = f32::fract((5.0 + hue * 6.0) / 6.0) * 6.0;
-    let kg = f32::fract((3.0 + hue * 6.0) / 6.0) * 6.0;
-    let kb = f32::fract((1.0 + hue * 6.0) / 6.0) * 6.0;
-    
-    let r = 1.0 - f32::max(f32::min(f32::min(kr, 4.0 - kr), 1.0), 0.0);
-    let g = 1.0 - f32::max(f32::min(f32::min(kg, 4.0 - kg), 1.0), 0.0);
-    let b = 1.0 - f32::max(f32::min(f32::min(kb, 4.0 - kb), 1.0), 0.0);
-    
-    return Color::new(r, g, b, 1.0);
-}
-
-fn color_from_wv(vector: &DVector<f32>, w_scale: f32, edge_color: Color) -> Color {
-    if vector.len() < 4 {
-        return edge_color;
-    }
-    
-    let wv_vector = Vec2::new(vector[3], vector[4]);
-    
-    let fade_to_color = color_from_hue((wv_vector.to_angle() / TAU) + 0.5 + (1.0 / 12.0));
-    let fade_strength = f32::min(wv_vector.length() * w_scale, 1.0);
-    
-    return Color::new(
-        f32::lerp(edge_color.r, fade_to_color.r, (fade_strength * 2.0).min(1.0)),
-        f32::lerp(edge_color.g, fade_to_color.g, (fade_strength * 2.0).min(1.0)),
-        f32::lerp(edge_color.b, fade_to_color.b, (fade_strength * 2.0).min(1.0)),
-        1.0 - fade_strength
-    );
-}
-
-fn distance_from_nvolume(vertex: &DVector<f32>, n: usize) -> f32 {
-    if vertex.len() < n {
-        return 0.0;
-    }
-    
-    let mut distance: f32 = 0.0;
-    for axis in 0..(vertex.len() - n) {
-        distance += vertex[axis + n] * vertex[axis + n];
-    }
-    
-    f32::sqrt(distance)
-}
-
-fn fade_from_depth(z: f32, near: f32, far: f32, zoom: f32) -> f32 {
-    1.0 - clamp(f32::inverse_lerp(near + zoom, far + zoom, z), 0.0, 1.0)
-}
-
-fn render(scene: &Scene, subdivisions: i32, shape_matrix: &DMatrix<f32>, shape_position: &DVector<f32>, edge_width: f32, near: f32, far: f32, zoom: f32, w_scale: f32, render_size: f32, screen_size: &Vec2) {
-    clear_background(BLACK);
-    
-    let mut local_space_vertices: Vec<DVector<f32>> = Vec::new();
-
-    for vertex in &scene.vertices {
-        // Vertex in world/camera space
-        let transformed_vertex = (shape_matrix * vertex) + shape_position;
-        
-        // Store vertex result
-        local_space_vertices.push(transformed_vertex);
-    }
-    
-    for i in (0..scene.edges.len()).step_by(2) {
-        // A and B are the ends of the edges, 1 and 2 are the ends of the sub edges
-        let vertex_a = &local_space_vertices[scene.edges[i]];
-        let vertex_b = &local_space_vertices[scene.edges[i + 1]];
-        
-        for s in 0..subdivisions {
-            let vertex_1 = vertex_a.lerp(&vertex_b, (s as f32) / (subdivisions as f32));
-            let vertex_2 = vertex_a.lerp(&vertex_b, ((s + 1) as f32) / (subdivisions as f32));
-            
-            let radius_1 = (screen_size.y * edge_width) / vertex_1[2];
-            let radius_2 = (screen_size.y * edge_width) / vertex_2[2];
-            
-            let edge_center = (&vertex_1 + &vertex_2) / 2.0;
-            
-            let mut color = color_from_wv(&edge_center, w_scale, scene.edge_colors[i / 2]);
-            color.a *= fade_from_depth(edge_center[2], near, far, zoom);
-            color.a *= 1.0 - (distance_from_nvolume(&edge_center, 5) * w_scale).clamp(0.0, 1.0);
-            
-            draw_variable_width_line(project_vertex(&vertex_1, render_size, screen_size.clone()), project_vertex(&vertex_2, render_size, screen_size.clone()), radius_1 * render_size, radius_2 * render_size, color);
-        }
-        
-    }
-}
-
-struct Scene {
-    polytope_path: String,
-    resolution: u32,
-    frame_count: i32,
-    facet_expansion: f32,
-	facet_expansion_rank: usize,
-    min_dimension: usize,
-    dimension: usize,
-    vertices: Vec<DVector<f32>>,
-    edges: Vec<usize>,
-    edge_colors: Vec<Color>,
-    resolution_vector: Vector2<f32>,
-}
-
-impl Scene {
-    fn setup() -> Self {
-        if !std::path::Path::new("./setup.txt").exists() {
-            panic!("no setup.txt file!!!!");
-        }
-        
-        let setup_file_contents = std::fs::read_to_string("./setup.txt").unwrap();
-        let lines: Vec<&str> = setup_file_contents.lines().collect();
-        
-		let args: Vec<String> = env::args().collect();
-		let polytope_path_pre: String;
-		if args.len() < 2 {
-			polytope_path_pre = lines[0].to_string();
-		}
-		else {
-			polytope_path_pre = args[1].clone();
-		}
-		
-        Scene {
-			polytope_path: polytope_path_pre,
-            resolution: lines[1].parse().unwrap(),
-            frame_count: lines[2].parse().unwrap(),
-            min_dimension: lines[3].parse().unwrap(),
-            facet_expansion: lines[4].parse().unwrap(),
-			facet_expansion_rank: lines[5].parse::<isize>().unwrap() as usize, // converts negative values to super high (integer underflow) ones. necessary for relative to rank values
-            dimension: 0,
-            vertices: vec![],
-            edges: vec![],
-            edge_colors: vec![],
-            resolution_vector: Vector2::new(lines[1].parse().unwrap(), lines[1].parse().unwrap())
-        }
-    }
-	
-	fn clear_polytope(&mut self) {
-		self.vertices.clear();
-        self.edges.clear();
-	}
-}
+mod math;
+mod scene;
+mod render;
 
 #[macroquad::main("nD Renderer")]
 async fn main() {
+    let args: Vec<String> = env::args().collect();
+
+    std::fs::create_dir_all("./images").unwrap(); // Create images folder if it does not exist already
+
     const DONE_SOUND_BYTES: &[u8] = include_bytes!(".././done.wav");
     
-    let mut scene = Scene::setup();
+    let mut scene = Scene::setup(&args);
     
     load_polytope(&mut scene);
     
@@ -228,6 +50,7 @@ async fn main() {
     let mut far = 0.5;
     
     let mut previous_mouse_pos = Vector2::new(0.0, 0.0);
+    let mut mouse_lock: bool = false;
     
     let mut subdivisions = 1;
 	
@@ -253,8 +76,29 @@ async fn main() {
 
     loop {
         // Rotate Shape
+
+        if !mouse_lock && is_key_down(KeyCode::J) {
+            mouse_lock = true;
+            // set_cursor_grab(true);
+            show_mouse(false);
+        }
+
+        if mouse_lock && (is_mouse_button_down(MouseButton::Left) || is_mouse_button_down(MouseButton::Middle) || is_mouse_button_down(MouseButton::Right)) {
+            mouse_lock = false;
+            // set_cursor_grab(false);
+            show_mouse(true);
+            // (previous_mouse_pos.x, previous_mouse_pos.y) = mouse_position();
+        }
+
+        fn mouse_control(previous_mouse_pos: Vector2<f32>, dimension: usize, shape_matrix: DMatrix<f32>, axis: usize, sensitivity: f32) -> DMatrix<f32> {
+            if axis < dimension {
+                return rotate_matrix(1, axis, (mouse_position().1 - previous_mouse_pos.y) * -sensitivity, dimension) * rotate_matrix(0, axis, (mouse_position().0 - previous_mouse_pos.x) * sensitivity, dimension) * shape_matrix;
+            } else {
+                return shape_matrix;
+            }
+        }
         
-        if is_mouse_button_down(MouseButton::Left) || is_mouse_button_down(MouseButton::Middle) {
+        if mouse_lock || is_mouse_button_down(MouseButton::Left) || is_mouse_button_down(MouseButton::Middle) {
             if is_key_down(KeyCode::LeftControl) {
                 shape_matrix = mouse_control(previous_mouse_pos, scene.dimension, shape_matrix, 3, -1.0/216.0);
             } else if is_key_down(KeyCode::Z) {
@@ -326,10 +170,7 @@ async fn main() {
             subdivisions += 1;
         }
         if is_key_pressed(KeyCode::F) {
-            subdivisions -= 1;
-            if subdivisions == 0 {
-                subdivisions = 1;
-            }
+            subdivisions = (subdivisions - 1).max(1);
         }
         if is_key_pressed(KeyCode::T) { // increases facet_expansion
             scene.clear_polytope();
@@ -361,7 +202,7 @@ async fn main() {
             load_polytope(&mut scene);
         }
         if is_key_pressed(KeyCode::Key0) {
-            scene = Scene::setup();
+            scene = Scene::setup(&args);
             load_polytope(&mut scene);
             if scene.dimension != shape_position.nrows() {
                 shape_matrix = DMatrix::identity(scene.dimension, scene.dimension);
@@ -409,7 +250,11 @@ async fn main() {
                 }
             }
             
-            virtual_image.texture.get_texture_data().export_png(&format!("./images/{:03}.png", image_index));
+            let mut img = virtual_image.texture.get_texture_data();
+            for pix in img.get_image_data_mut() { // Force saved image to have no transparency
+                pix[3] = 255;
+            }
+            img.export_png(&format!("./images/{:03}.png", image_index));
             
             image_index += 1;
         }
