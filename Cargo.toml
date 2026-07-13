@@ -7,3 +7,4 @@ edition = "2021"
 fs = "0.0.5"
 macroquad = { version="0.4.14", features = ["audio"] }
 nalgebra = "0.33.2"
+walkdir = "2.5.0"

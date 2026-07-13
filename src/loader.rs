@@ -1,5 +1,8 @@
-use macroquad::color::*;
+use std::path::PathBuf;
+
+use macroquad::{color::*, rand::ChooseRandom};
 use nalgebra::DVector;
+use walkdir::WalkDir;
 
 use crate::{Scene};
 
@@ -54,12 +57,24 @@ fn get_vertices_from_element(polytope_data: &Vec<Vec<Vec<usize>>>, element_verti
     }
 }
 
-pub fn load_polytope(scene: &mut Scene) {
-    if !std::path::Path::new(scene.polytope_path.as_str()).exists() {
-		panic!("file doesnt exist!!!!");
+pub fn load_polytope(scene: &mut Scene, rand: bool) {
+    if rand {
+        let files: Vec<PathBuf> = WalkDir::new(scene.polytopes_folder.as_str())
+            .into_iter()
+            .filter_map(|entry| entry.ok())      // Ignore unreadable files/directories
+            .filter(|entry| entry.file_type().is_file()) // Filter out directories
+            .map(|entry| entry.into_path())      // Convert WalkDir Entry to PathBuf
+            .collect();
+        println!("Found {} files: {:?}", files.len(), files);
+
+        let file = files.choose().expect("File cannot be found or doesnt exist!!!!");
+
+        scene.polytope_path = file.display().to_string();
+
+        println!("Choose: {}", scene.polytope_path);
     }
 
-    let contents = std::fs::read_to_string(scene.polytope_path.as_str()).unwrap();
+    let contents: String = std::fs::read_to_string(scene.polytope_path.as_str()).expect("File cannot be found or doesnt exist!!!!");
     
     let mut state: u8 = 0;
     
