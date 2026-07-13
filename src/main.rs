@@ -2,12 +2,15 @@ use macroquad::audio::load_sound_from_bytes;
 use macroquad::audio::play_sound_once;
 use macroquad::miniquad::window::set_window_size;
 use macroquad::prelude::*;
+use macroquad::rand::srand;
 use na::Vector2;
 use nalgebra::VecStorage;
 use nalgebra::{self as na, DMatrix, DVector};
 use std;
 use std::env;
 use std::f32::consts::TAU;
+use std::time::SystemTime;
+use std::time::UNIX_EPOCH;
 use std::usize;
 use std::vec;
 
@@ -26,13 +29,17 @@ mod render;
 async fn main() {
     let args: Vec<String> = env::args().collect();
 
-    std::fs::create_dir_all("./images").unwrap(); // Create images folder if it does not exist already
+    // Create folders if they do not exist already
+    std::fs::create_dir_all("./images").unwrap();
+    std::fs::create_dir_all("./polytopes").unwrap();
+
+    srand(SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()); // Change macroquads random seed to prevent choosing the same sequence of polytopes
 
     const DONE_SOUND_BYTES: &[u8] = include_bytes!(".././done.wav");
     
     let mut scene = Scene::setup(&args);
     
-    load_polytope(&mut scene);
+    load_polytope(&mut scene, false);
     
     let mut shape_matrix = DMatrix::identity(scene.dimension, scene.dimension);
     let mut shape_position = DVector::zeros(scene.dimension);
@@ -175,7 +182,7 @@ async fn main() {
         if is_key_pressed(KeyCode::T) { // increases facet_expansion
             scene.clear_polytope();
 			scene.facet_expansion = 1.0 - (1.0 - scene.facet_expansion) / facet_expansion_key_speed;
-            load_polytope(&mut scene);
+            load_polytope(&mut scene, false);
         }
 		if is_key_pressed(KeyCode::G) { // decreases facet_expansion
             scene.clear_polytope();
@@ -183,7 +190,7 @@ async fn main() {
 			if scene.facet_expansion < 1.0 - 1.0 / facet_expansion_key_speed {
 				scene.facet_expansion = 0.0;
 			}
-            load_polytope(&mut scene);
+            load_polytope(&mut scene, false);
         }
         if is_key_pressed(KeyCode::Y) {
             scene.clear_polytope();
@@ -191,7 +198,7 @@ async fn main() {
 			if scene.facet_expansion_rank > scene.dimension - 1 {
 				scene.facet_expansion_rank = scene.dimension - 1;
 			}
-            load_polytope(&mut scene);
+            load_polytope(&mut scene, false);
         }
 		if is_key_pressed(KeyCode::H) {
             scene.clear_polytope();
@@ -199,17 +206,21 @@ async fn main() {
 			if scene.facet_expansion_rank < 2 {
 				scene.facet_expansion_rank = 2;
 			}
-            load_polytope(&mut scene);
+            load_polytope(&mut scene, false);
         }
         if is_key_pressed(KeyCode::Key0) {
             scene = Scene::setup(&args);
-            load_polytope(&mut scene);
+            load_polytope(&mut scene, false);
             if scene.dimension != shape_position.nrows() {
                 shape_matrix = DMatrix::identity(scene.dimension, scene.dimension);
                 rotational_offset = DMatrix::identity(scene.dimension, scene.dimension);
                 shape_position = DVector::zeros(scene.dimension);
             }
             virtual_image = render_target(scene.resolution, scene.resolution);
+        }
+        if is_key_pressed(KeyCode::K) {
+            scene.clear_polytope();
+            load_polytope(&mut scene, true);
         }
         if is_key_pressed(KeyCode::Key1) {
             rotational_offset = shape_matrix.clone() * rotational_offset;

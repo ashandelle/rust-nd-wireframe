@@ -2,6 +2,7 @@ use macroquad::color::Color;
 use nalgebra::{DVector, Vector2};
 
 pub struct Scene {
+    pub polytopes_folder: String,
     pub polytope_path: String,
     pub resolution: u32,
     pub frame_count: i32,
@@ -26,24 +27,25 @@ impl Scene {
 
 		let polytope_path_pre: String;
 		if args.len() < 2 {
-			polytope_path_pre = lines[0].to_string();
+			polytope_path_pre = lines[1].to_string();
 		}
 		else {
 			polytope_path_pre = args[1].clone();
 		}
 		
         Scene {
+            polytopes_folder: lines[0].to_string(),
 			polytope_path: polytope_path_pre,
-            resolution: lines[1].parse().unwrap(),
-            frame_count: lines[2].parse().unwrap(),
-            min_dimension: lines[3].parse().unwrap(),
-            facet_expansion: lines[4].parse().unwrap(),
-			facet_expansion_rank: lines[5].parse::<isize>().unwrap() as usize, // converts negative values to super high (integer underflow) ones. necessary for relative to rank values
+            resolution: lines[2].parse().unwrap(),
+            frame_count: lines[3].parse().unwrap(),
+            min_dimension: lines[4].parse().unwrap(),
+            facet_expansion: lines[5].parse().unwrap(),
+			facet_expansion_rank: lines[6].parse::<isize>().unwrap() as usize, // converts negative values to super high (integer underflow) ones. necessary for relative to rank values
             dimension: 0,
             vertices: vec![],
             edges: vec![],
             edge_colors: vec![],
-            resolution_vector: Vector2::new(lines[1].parse().unwrap(), lines[1].parse().unwrap())
+            resolution_vector: Vector2::new(lines[2].parse().unwrap(), lines[2].parse().unwrap())
         }
     }
 	
