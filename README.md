@@ -43,12 +43,13 @@ Uh yeah I think that's about it for how to use this program. The rest will dive 
 - motion and starting position cannot be applied to the Z (2) axis.
 
 ## setup.txt
-- first line is a path to the polytope you wish to load, local to this folder starting with "./".
-- second line is the horizontal and vertical resolution of the animation in a single number, so all animations must be square.
-- third line is the number of frames in the animation.
-- fourth line is the minimum dimension
-- fifth line is the facet expansion, 0.0 turns it off, 1.0 is visually identical, 0.5 - 0.9 is good.
-- sixth line is the element rank to expand, negative values are interpreted as relative to the polytope's rank.
+- first line is a path to the folder containing the polytope
+- second line is a path to the polytope you wish to load
+- third line is the horizontal and vertical resolution of the animation in a single number, so all animations must be square.
+- fourth line is the number of frames in the animation.
+- fifth line is the minimum dimension
+- sixth line is the facet expansion, 0.0 turns it off, 1.0 is visually identical, 0.5 - 0.9 is good.
+- seventh line is the element rank to expand, negative values are interpreted as relative to the polytope's rank.
 
 ## Axes
 0 - right<br>
@@ -81,7 +82,13 @@ E/D - expands/contracts the extra dimensional fade, aka it controls how far you 
 R/F - controls the number of subdivisions of the edges<br>
 T/G - increase/decrease the element expansion (credit to MinersHavenM43)<br>
 <br>
+J - enters free rotation, where you don't have to hold down the button or worry about your mouse running out of room<br>
+K - picks a random polytope from the directory, and prints its name to the console, for guessing games<br>
+<br>
 0 - reloads setup.txt<br>
 1 - saves current camera rotation for more advanced animation<br>
 <br>
 Enter - starts the animation, and starts writing frames to ./images. be warned- you can still do all the usual inputs while it's rendering, if you accidentally pan or something it will be visible in the animation.
+
+## Credits
+Along with me, the creator, two other people have put effort into this project. MinersHavenM43, and Ashandelle. Thank you to both of them for making this renderer better!
