@@ -43,7 +43,7 @@ Uh yeah I think that's about it for how to use this program. The rest will dive 
 - motion and starting position cannot be applied to the Z (2) axis.
 
 ## setup.txt
-- first line is a path to any folder that contains only polytopes and other folders
+- first line is a path to any folder that contains only polytopes and other polytope folders
 - second line is a path to the polytope you wish to load on startup
 - third line is the horizontal and vertical resolution of the animation in a single number, so all animations must be square.
 - fourth line is the number of frames in the animation.
