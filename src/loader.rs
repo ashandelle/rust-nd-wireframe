@@ -65,13 +65,17 @@ pub fn load_polytope(scene: &mut Scene, rand: bool) {
             .filter(|entry| entry.file_type().is_file()) // Filter out directories
             .map(|entry| entry.into_path())      // Convert WalkDir Entry to PathBuf
             .collect();
-        println!("Found {} files: {:?}", files.len(), files);
 
         let file = files.choose().expect("File cannot be found or doesnt exist!!!!");
 
         scene.polytope_path = file.display().to_string();
+        
+        let mut polytope_name = scene.polytope_path.clone();
+        polytope_name = polytope_name.replace("\\", "/");
+        let path_chunks = polytope_name.split("/");
+        polytope_name = path_chunks.last().expect("failed to get polytope name").to_string();
 
-        println!("Choose: {}", scene.polytope_path);
+        println!("Chose {}", polytope_name);
     }
 
     let contents: String = std::fs::read_to_string(scene.polytope_path.as_str()).expect("File cannot be found or doesnt exist!!!!");
